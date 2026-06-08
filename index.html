@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Relatorio de Demandas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- HEADER -->
+    <div class="header">
+
+      <div class="logo-area">
+        <div class="logo-preview" id="logoPreview">
+          LOGO
+        </div>
+
+        <div class="header-text">
+          <h1>Relatorio de Demandas</h1>
+          <p>Controle de demandas realizadas pela equipe</p>
+        </div>
+      </div>
+
+      <div>
+        <input type="file" id="logoInput" hidden accept="image/*">
+        <button class="upload-btn" onclick="document.getElementById('logoInput').click()">
+          Inserir Logo
+        </button>
+      </div>
+
+    </div>
+
+    <!-- INFO GERAL -->
+    <div class="info-grid">
+
+      <div class="field">
+        <label>Mês do Relatório</label>
+        <input type="text" id="monthInput" placeholder="Ex: Junho 2026">
+      </div>
+
+      <div class="field">
+        <label>Responsável pela Revisão</label>
+        <input type="text" id="reviewerInput" placeholder="Nome do responsável">
+      </div>
+
+    </div>
+
+    <!-- DEMANDA -->
+    <div class="activities-section">
+
+      <div class="activities-title">
+        <h2>Demandas</h2>
+
+        <div class="title-actions">
+          <input type="file" id="jiraImportInput" hidden accept=".html,.htm,.txt,.pdf">
+          <button class="import-btn" onclick="document.getElementById('jiraImportInput').click()">
+            Importar Jira
+          </button>
+
+          <button class="add-btn" onclick="addActivity()">
+            + Adicionar Demanda
+          </button>
+        </div>
+      </div>
+
+      <div id="activitiesContainer"></div>
+
+    </div>
+
+    <button class="print-btn" onclick="window.print()">
+      Gerar / Imprimir Relatório
+    </button>
+
+  </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.min.js"></script>
+<script src="script.js"></script>
+
+</body>
+</html>
+```
