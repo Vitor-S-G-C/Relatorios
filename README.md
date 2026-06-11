@@ -1,6 +1,6 @@
 # Relatorio de Demandas
 
-Sistema web simples para montar relatorios de demandas da equipe, com suporte a importacao de dados do Jira (HTML, TXT e PDF com texto selecionavel), anexos de imagens e impressao em PDF.
+Sistema web simples para montar relatorios de demandas da equipe, com suporte a importacao de dados por XML e Word, anexos de imagens e impressao em PDF.
 
 ## Visao geral
 
@@ -16,12 +16,13 @@ Tudo roda no navegador.
 - Criacao de multiplas demandas
 - Campos por demanda:
   - Titulo da demanda
-  - Data de inicio
-  - Data de termino
+  - Data e hora de inicio
+  - Data e hora de termino
   - Descricao (limite de 500 caracteres)
   - Imagens opcionais
   - Equipe que realizou a demanda (multiplas pessoas)
-- Importacao de demanda a partir de arquivo do Jira
+- Importacao de demanda a partir de arquivo Word
+- Importacao de XML por arquivo ou por texto colado
 - Impressao otimizada para PDF:
   - Primeira pagina com cabecalho e dados gerais
   - Uma pagina por demanda
@@ -32,6 +33,7 @@ Tudo roda no navegador.
 - index.html: estrutura da pagina e botoes principais
 - styles.css: estilos da interface e regras de impressao
 - script.js: logica de demandas, importacao e preenchimento automatico
+- O sistema nao possui sincronizacao automatica via API no momento
 
 ## Como executar
 
@@ -52,37 +54,56 @@ Opcao recomendada no VS Code:
 3. Em cada demanda, preencha os campos necessarios.
 4. Clique em Gerar / Imprimir Relatorio para exportar em PDF.
 
-## Importacao do Jira
+## Importacao do Word
 
-Use o botao Importar Jira para preencher automaticamente uma nova demanda.
+Use o botao Importar Word para preencher automaticamente uma nova demanda.
 
 Formatos aceitos:
 
-- .html
-- .htm
-- .txt
-- .pdf
+- .docx
+- .doc
 
 Campos que o importador tenta extrair:
 
 - Titulo
 - Descricao
-- Responsavel / Relator
-- Data de criacao (inicio)
-- Data de atualizacao (termino)
+- Responsavel
+- Data de inicio
+- Data de termino
+
+Importacao XML:
+
+- Use a area de importacao XML para enviar um arquivo ou colar o texto do XML.
+- O sistema tenta localizar campos como titulo, descricao, responsavel, inicio e fim.
+- Os campos de inicio e termino aceitam data e hora no card da demanda.
 
 Observacoes importantes:
 
-- PDF precisa ter texto selecionavel para extracao funcionar.
-- PDF escaneado como imagem pode nao ser lido sem OCR.
+- Para melhor resultado, use arquivos .docx com texto selecionavel.
 - Quando algum campo nao for encontrado, o sistema aplica fallback com dados disponiveis.
+
+## Importacao XML
+
+Use a area de importacao XML para enviar um arquivo ou colar o texto do XML.
+
+Formato esperado:
+
+- RSS/XML do Jira com `<rss>`, `<channel>` e `<item>`
+- Campos usados:
+  - `summary` ou `title` para o titulo
+  - `description` para a descricao
+  - `assignee` ou `reporter` para o responsavel
+  - `created` para o inicio
+  - `resolved` ou `updated` para o termino
+
+O texto do XML que voce enviou ja e compativel com esse fluxo.
 
 ## Tecnologias
 
 - HTML5
 - CSS3
 - JavaScript (ES6+)
-- PDF.js (via CDN) para leitura de PDF no navegador
+- Mammoth.js (via CDN) para leitura de DOCX no navegador
 
 ## Melhorias futuras sugeridas
 

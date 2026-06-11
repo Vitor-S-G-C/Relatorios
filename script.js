@@ -2,15 +2,182 @@
     const activitiesContainer = document.getElementById("activitiesContainer");
     const monthInput = document.getElementById("monthInput");
     const reviewerInput = document.getElementById("reviewerInput");
-    const jiraImportInput = document.getElementById("jiraImportInput");
+    const totalHoursValue = document.getElementById("totalHoursValue");
+    const logoPreview = document.getElementById("logoPreview");
+    const coverLogo = document.getElementById("coverLogo");
+    const coverDateTime = document.getElementById("coverDateTime");
+    const coverMonthValue = document.getElementById("coverMonthValue");
+    const coverReviewerValue = document.getElementById("coverReviewerValue");
+    const coverHoursValue = document.getElementById("coverHoursValue");
+    const wordImportInput = document.getElementById("wordImportInput");
+    const wordFileBtn = document.getElementById("wordFileBtn");
+    const xmlImportInput = document.getElementById("xmlImportInput");
+    const xmlFileBtn = document.getElementById("xmlFileBtn");
+    const xmlTextBtn = document.getElementById("xmlTextBtn");
+    const xmlTextInput = document.getElementById("xmlTextInput");
 
-    if(typeof pdfjsLib !== "undefined"){
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.worker.min.js";
-    }
+    const monthNames = [
+      "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho",
+      "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ];
 
     let activityCount = 0;
 
+    function normalizeDemandStatus(value){
+      const normalized = normalizeLookupToken(value);
+
+      if(["concluido", "concluida", "done", "finalizado", "finalizada", "resolvido", "resolved"].includes(normalized)){
+        return "done";
+      }
+
+      if(["emandamento", "inprogress", "progress", "andamento", "emexecucao", "doing"].includes(normalized)){
+        return "in-progress";
+      }
+
+      if(["afazer", "todo", "open", "aberto", "pendente", "backlog"].includes(normalized)){
+        return "todo";
+      }
+
+      return "done";
+    }
+
+    function normalizeDemandPriority(value){
+      const normalized = normalizeLookupToken(value);
+
+      if(["highest", "high", "alta", "urgente", "critica", "critical"].includes(normalized)){
+        return "high";
+      }
+
+      if(["lowest", "low", "baixa", "baixo"].includes(normalized)){
+        return "low";
+      }
+
+      if(["media", "medium", "normal", "moderada"].includes(normalized)){
+        return "medium";
+      }
+
+      return normalized ? "medium" : "";
+    }
+
+    function updateActivityVisualState(card){
+      if(!card){
+        return;
+      }
+
+      const statusInput = card.querySelector(".demand-status-input");
+      const priorityInput = card.querySelector(".demand-priority-input");
+
+      const statusValue = statusInput ? statusInput.value : "done";
+      const priorityValue = priorityInput ? priorityInput.value : "";
+
+      card.dataset.status = statusValue;
+      card.dataset.priority = priorityValue;
+    }
+
+    function parseWorkedHours(value){
+      if(value === null || value === undefined){
+        return 0;
+      }
+
+      if(typeof value === "number"){
+        return Number.isFinite(value) ? value : 0;
+      }
+
+      const raw = String(value).trim();
+      if(!raw){
+        return 0;
+      }
+
+      const normalized = raw.replace(/,/g, ".").toLowerCase();
+      const hoursAndMinutes = normalized.match(/(\d+(?:\.\d+)?)\s*h(?:oras?)?\s*(?:(\d+)\s*m(?:in(?:utos?)?)?)?/i);
+      if(hoursAndMinutes){
+        const hours = Number(hoursAndMinutes[1] || 0);
+        const minutes = Number(hoursAndMinutes[2] || 0);
+        return hours + (minutes / 60);
+      }
+
+      const minutesOnly = normalized.match(/(\d+(?:\.\d+)?)\s*m(?:in(?:utos?)?)?/i);
+      if(minutesOnly){
+        return Number(minutesOnly[1] || 0) / 60;
+      }
+
+      const plainNumber = Number(normalized);
+      return Number.isFinite(plainNumber) ? plainNumber : 0;
+    }
+
+    function formatHoursValue(hours){
+      const total = Math.max(0, Number(hours) || 0);
+      const rounded = Math.round(total * 100) / 100;
+      const formatted = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
+      return `${formatted}h`;
+    }
+
+    function formatGeneratedAt(){
+      return new Intl.DateTimeFormat("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      }).format(new Date());
+    }
+
+    function syncPrintCover(){
+      if(coverDateTime){
+        coverDateTime.textContent = formatGeneratedAt();
+      }
+
+      if(coverMonthValue){
+        coverMonthValue.textContent = (monthInput.value || "Não informado").trim() || "Não informado";
+      }
+
+      if(coverReviewerValue){
+        coverReviewerValue.textContent = (reviewerInput.value || "Não informado").trim() || "Não informado";
+      }
+
+      if(coverHoursValue && totalHoursValue){
+        coverHoursValue.textContent = totalHoursValue.textContent || "0h";
+      }
+
+      if(coverLogo && logoPreview){
+        coverLogo.innerHTML = logoPreview.innerHTML;
+      }
+    }
+
+    function updateTotalWorkedHours(){
+      if(!totalHoursValue){
+        return;
+      }
+
+      const totalHours = Array.from(activitiesContainer.querySelectorAll(".demand-hours-input"))
+        .reduce((sum, input) => sum + parseWorkedHours(input.value), 0);
+
+      totalHoursValue.textContent = formatHoursValue(totalHours);
+      syncPrintCover();
+    }
+
+    function renderEmptyActivitiesState(){
+      if(!activitiesContainer || activitiesContainer.children.length > 0){
+        return;
+      }
+
+      activitiesContainer.innerHTML = `
+        <div class="empty-activities">
+          <h3>Nenhuma demanda adicionada ainda</h3>
+          <p>Clique em <strong>+ Adicionar Demanda</strong> para começar ou importe um arquivo.</p>
+        </div>
+      `;
+    }
+
+    function clearEmptyActivitiesState(){
+      const emptyState = activitiesContainer.querySelector(".empty-activities");
+      if(emptyState){
+        emptyState.remove();
+      }
+    }
+
     function addActivity(prefill = {}) {
+      clearEmptyActivitiesState();
       activityCount++;
 
       const activity = document.createElement("div");
@@ -35,13 +202,37 @@
           </div>
 
           <div class="field">
-            <label>Data de Início</label>
-            <input type="date" class="demand-start-input">
+            <label>Início (data e hora)</label>
+            <input type="datetime-local" class="demand-start-input">
           </div>
 
           <div class="field">
-            <label>Data de Término</label>
-            <input type="date" class="demand-end-input">
+            <label>Término (data e hora)</label>
+            <input type="datetime-local" class="demand-end-input">
+          </div>
+
+          <div class="field">
+            <label>Status</label>
+            <select class="demand-status-input" onchange="updateActivityStatus(this)">
+              <option value="todo">A fazer</option>
+              <option value="in-progress">Em andamento</option>
+              <option value="done" selected>Concluída</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Prioridade</label>
+            <select class="demand-priority-input" onchange="updateActivityPriority(this)">
+              <option value="">Selecione</option>
+              <option value="low">Baixa</option>
+              <option value="medium">Média</option>
+              <option value="high">Alta</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Horas Trabalhadas</label>
+            <input type="number" min="0" step="0.25" class="demand-hours-input" placeholder="Ex: 7" oninput="updateWorkedHours(this)">
           </div>
 
         </div>
@@ -88,16 +279,32 @@
       activitiesContainer.appendChild(activity);
 
       fillDemandCard(activity, prefill);
+      updateActivityVisualState(activity);
+      updateTotalWorkedHours();
       return activity;
     }
 
     function removeActivity(button){
       button.closest(".activity-card").remove();
+      updateTotalWorkedHours();
+      renderEmptyActivitiesState();
     }
 
     function updateCounter(textarea){
       const counter = textarea.parentElement.querySelector("span");
       counter.textContent = textarea.value.length;
+    }
+
+    function updateActivityStatus(input){
+      updateActivityVisualState(input.closest(".activity-card"));
+    }
+
+    function updateActivityPriority(input){
+      updateActivityVisualState(input.closest(".activity-card"));
+    }
+
+    function updateWorkedHours(){
+      updateTotalWorkedHours();
     }
 
     function previewImages(event, input){
@@ -156,12 +363,28 @@
 
       if(prefill.startDate){
         const startInput = card.querySelector(".demand-start-input");
-        startInput.value = prefill.startDate;
+        startInput.value = formatDateTimeForInput(prefill.startDate);
       }
 
       if(prefill.endDate){
         const endInput = card.querySelector(".demand-end-input");
-        endInput.value = prefill.endDate;
+        endInput.value = formatDateTimeForInput(prefill.endDate);
+      }
+
+      if(prefill.status){
+        const statusInput = card.querySelector(".demand-status-input");
+        statusInput.value = normalizeDemandStatus(prefill.status);
+      }
+
+      if(prefill.priority){
+        const priorityInput = card.querySelector(".demand-priority-input");
+        priorityInput.value = normalizeDemandPriority(prefill.priority);
+      }
+
+      if(prefill.workedHours !== undefined && prefill.workedHours !== null){
+        const hoursInput = card.querySelector(".demand-hours-input");
+        const parsedHours = parseWorkedHours(prefill.workedHours);
+        hoursInput.value = parsedHours > 0 ? String(Math.round(parsedHours * 100) / 100) : "";
       }
 
       if(prefill.description){
@@ -227,6 +450,208 @@
 
     function normalizeLineBreaks(text){
       return text.replace(/\r/g, "").replace(/\u00a0/g, " ");
+    }
+
+    function getXmlFirstItem(doc){
+      return doc.querySelector("rss > channel > item, item");
+    }
+
+    function normalizeLookupToken(value){
+      return String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+    }
+
+    function formatDateTimeForInput(value){
+      if(!value){
+        return "";
+      }
+
+      const raw = String(value).trim();
+      if(!raw){
+        return "";
+      }
+
+      const dateTimeLocalMatch = raw.match(/^(\d{4}-\d{2}-\d{2})[T\s](\d{2}:\d{2})(?::\d{2})?/);
+      if(dateTimeLocalMatch){
+        return `${dateTimeLocalMatch[1]}T${dateTimeLocalMatch[2]}`;
+      }
+
+      const dateOnlyMatch = raw.match(/^(\d{4}-\d{2}-\d{2})$/);
+      if(dateOnlyMatch){
+        return `${dateOnlyMatch[1]}T00:00`;
+      }
+
+      const slashDateMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::\d{2})?)?/);
+      if(slashDateMatch){
+        const day = slashDateMatch[1].padStart(2, "0");
+        const month = slashDateMatch[2].padStart(2, "0");
+        let year = slashDateMatch[3];
+        if(year.length === 2){
+          year = `20${year}`;
+        }
+        const hour = (slashDateMatch[4] || "00").padStart(2, "0");
+        const minute = (slashDateMatch[5] || "00").padStart(2, "0");
+        return `${year}-${month}-${day}T${hour}:${minute}`;
+      }
+
+      const dateValue = new Date(raw);
+      if(!Number.isNaN(dateValue.getTime())){
+        const year = dateValue.getFullYear();
+        const month = String(dateValue.getMonth() + 1).padStart(2, "0");
+        const day = String(dateValue.getDate()).padStart(2, "0");
+        const hours = String(dateValue.getHours()).padStart(2, "0");
+        const minutes = String(dateValue.getMinutes()).padStart(2, "0");
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      }
+
+      return raw;
+    }
+
+    function extractMonthYearFromDateTime(value){
+      const normalized = String(value || "").trim();
+      if(!normalized){
+        return "";
+      }
+
+      const isoMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if(isoMatch){
+        const year = isoMatch[1];
+        const monthIndex = Number(isoMatch[2]) - 1;
+        if(monthIndex >= 0 && monthIndex < monthNames.length){
+          return `${monthNames[monthIndex]} ${year}`;
+        }
+      }
+
+      const parsed = new Date(normalized);
+      if(!Number.isNaN(parsed.getTime())){
+        return `${monthNames[parsed.getMonth()]} ${parsed.getFullYear()}`;
+      }
+
+      return "";
+    }
+
+    function findXmlValue(xmlDoc, aliases){
+      const normalizedAliases = aliases.map(normalizeLookupToken);
+      const elements = Array.from(xmlDoc.getElementsByTagName("*"));
+
+      for(const element of elements){
+        const elementName = normalizeLookupToken(element.localName || element.tagName || "");
+        if(normalizedAliases.includes(elementName)){
+          const text = cleanExtractedValue(normalizeLineBreaks(element.textContent || ""));
+          if(text){
+            return text;
+          }
+        }
+
+        for(const attribute of Array.from(element.attributes || [])){
+          const attributeName = normalizeLookupToken(attribute.localName || attribute.name || "");
+          if(normalizedAliases.includes(attributeName)){
+            const text = cleanExtractedValue(normalizeLineBreaks(attribute.value || ""));
+            if(text){
+              return text;
+            }
+          }
+        }
+      }
+
+      return "";
+    }
+
+    function findXmlValueFromRawText(text, aliases){
+      for(const alias of aliases){
+        const escapedAlias = escapeRegex(alias);
+        const regex = new RegExp(`<\\s*${escapedAlias}[^>]*>([\\s\\S]*?)<\\s*/\\s*${escapedAlias}\\s*>`, "i");
+        const match = text.match(regex);
+        if(match && match[1]){
+          const value = cleanExtractedValue(match[1]);
+          if(value){
+            return value;
+          }
+        }
+      }
+
+      return "";
+    }
+
+    function getXmlItemValue(itemNode, aliases){
+      if(!itemNode){
+        return "";
+      }
+
+      for(const alias of aliases){
+        const node = itemNode.querySelector(alias.toLowerCase());
+        if(node && node.textContent){
+          const value = cleanExtractedValue(normalizeLineBreaks(node.textContent));
+          if(value){
+            return value;
+          }
+        }
+      }
+
+      return "";
+    }
+
+    function getXmlItemSeconds(itemNode, tagName){
+      if(!itemNode){
+        return 0;
+      }
+
+      const node = itemNode.querySelector(tagName);
+      if(!node){
+        return 0;
+      }
+
+      const secondsValue = Number(node.getAttribute("seconds") || 0);
+      return Number.isFinite(secondsValue) ? secondsValue : 0;
+    }
+
+    function parseXmlImport(content){
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(content, "application/xml");
+      const parserError = xmlDoc.querySelector("parsererror");
+      if(parserError){
+        return {
+          title: "Demanda importada do XML",
+          description: normalizeLineBreaks(content).trim().slice(0, 500),
+          startDate: "",
+          endDate: "",
+          reviewer: "",
+          people: []
+        };
+      }
+
+      const itemNode = getXmlFirstItem(xmlDoc) || xmlDoc;
+      const title = getXmlItemValue(itemNode, ["summary", "title"]) || "Demanda importada do XML";
+      const descricaoNode = itemNode.querySelector("description");
+      const descricao = descricaoNode && descricaoNode.textContent
+        ? cleanExtractedValue(normalizeLineBreaks(descricaoNode.textContent))
+        : "";
+      const inicio = getXmlItemValue(itemNode, ["created"]);
+      const fim = getXmlItemValue(itemNode, ["resolved", "updated"]);
+      const status = getXmlItemValue(itemNode, ["status"]);
+      const priority = getXmlItemValue(itemNode, ["priority"]);
+      const timeSpentSeconds = getXmlItemSeconds(itemNode, "timespent");
+      const timeSpentText = getXmlItemValue(itemNode, ["timespent"]);
+      const assigneeNode = itemNode.querySelector("assignee");
+      const reporterNode = itemNode.querySelector("reporter");
+      const assignee = assigneeNode && assigneeNode.textContent ? cleanExtractedValue(normalizeLineBreaks(assigneeNode.textContent)) : "";
+      const reporter = reporterNode && reporterNode.textContent ? cleanExtractedValue(normalizeLineBreaks(reporterNode.textContent)) : "";
+      const responsavel = assignee || reporter;
+
+      return {
+        title,
+        description: descricao || cleanExtractedValue(normalizeLineBreaks(xmlDoc.documentElement.textContent || content)).slice(0, 500),
+        startDate: formatDateTimeForInput(inicio),
+        endDate: formatDateTimeForInput(fim),
+        status,
+        priority,
+        workedHours: timeSpentSeconds > 0 ? (timeSpentSeconds / 3600) : parseWorkedHours(timeSpentText),
+        reviewer: responsavel,
+        people: responsavel ? [responsavel] : []
+      };
     }
 
     function extractDescription(text, doc){
@@ -321,7 +746,65 @@
       return "";
     }
 
+    function issueToPrefill(issue){
+      const title = issue.summary
+        ? `${issue.key || ""} - ${issue.summary}`.replace(/^\s*-\s*/, "")
+        : (issue.key || "Demanda importada do Jira");
+
+      const descriptionParts = [];
+      if(issue.description){
+        descriptionParts.push(issue.description);
+      }
+      if(issue.status){
+        descriptionParts.push(`Status: ${issue.status}`);
+      }
+      if(issue.priority){
+        descriptionParts.push(`Prioridade: ${issue.priority}`);
+      }
+      if(issue.url){
+        descriptionParts.push(`Jira: ${issue.url}`);
+      }
+
+      const people = [];
+      if(issue.assignee){
+        people.push(issue.assignee);
+      }
+      if(issue.reporter && !people.some(name => name.toLowerCase() === issue.reporter.toLowerCase())){
+        people.push(issue.reporter);
+      }
+
+      return {
+        title,
+        description: descriptionParts.join("\n\n").slice(0, 500),
+        startDate: issue.created || "",
+        endDate: issue.updated || "",
+        status: issue.status || "",
+        priority: issue.priority || "",
+        workedHours: issue.worklogHours || issue.timespentHours || 0,
+        reviewer: issue.assignee || issue.reporter || "",
+        people
+      };
+    }
+
+    function hasImportedData(data){
+      return Boolean(
+        data && (
+          data.title ||
+          data.description ||
+          data.startDate ||
+          data.endDate ||
+          data.reviewer ||
+          (Array.isArray(data.people) && data.people.length > 0)
+        )
+      );
+    }
+
     function parseJiraImport(content){
+      const lowerContent = (content || "").toLowerCase();
+      if(lowerContent.includes("<rss") || lowerContent.includes("<channel") || lowerContent.includes("<item")){
+        return parseXmlImport(content);
+      }
+
       const parser = new DOMParser();
       const doc = parser.parseFromString(content, "text/html");
       const rawText = doc.body ? (doc.body.innerText || doc.body.textContent || "") : content;
@@ -333,6 +816,9 @@
       const relator = getFieldValue(text, ["Relator", "Reporter"]);
       const criado = getFieldValue(text, ["Criado", "Created"]);
       const atualizado = getFieldValue(text, ["Atualizado", "Atualizado(a)", "Updated"]);
+      const status = getFieldValue(text, ["Status"]);
+      const priority = getFieldValue(text, ["Prioridade", "Priority"]);
+      const workedHours = getFieldValue(text, ["Tempo gasto", "Timespent", "Tempo trabalhado"]);
       const descricao = extractDescription(text, doc);
 
       const people = [];
@@ -352,46 +838,44 @@
         description: descricao || fallbackDescription,
         startDate: parseJiraDate(criado),
         endDate: parseJiraDate(atualizado),
+        status,
+        priority,
+        workedHours: parseWorkedHours(workedHours),
         reviewer: responsavel || relator,
         people
       };
     }
 
-    async function extractTextFromPdf(file){
-      if(typeof pdfjsLib === "undefined"){
-        throw new Error("PDF library unavailable");
-      }
-
-      const buffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-      const pageTexts = [];
-
-      for(let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++){
-        const page = await pdf.getPage(pageNumber);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-          .map(item => item.str)
-          .join(" ")
-          .replace(/\s+/g, " ")
-          .trim();
-
-        if(pageText){
-          pageTexts.push(pageText);
-        }
-      }
-
-      return pageTexts.join("\n");
+    async function readImportFile(file){
+      return file.text();
     }
 
-    async function readImportFile(file){
+    async function readWordFile(file){
       const fileName = (file.name || "").toLowerCase();
-      const isPdf = file.type === "application/pdf" || fileName.endsWith(".pdf");
+      const isDocx = fileName.endsWith(".docx") || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-      if(isPdf){
-        return extractTextFromPdf(file);
+      if(isDocx){
+        if(typeof mammoth === "undefined"){
+          throw new Error("Word library unavailable");
+        }
+
+        const buffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+        return normalizeLineBreaks(result.value || "");
       }
 
-      return file.text();
+      const fallbackText = await file.text();
+      return normalizeLineBreaks(fallbackText || "");
+    }
+
+    function parseWordImport(content){
+      const importedData = parseJiraImport(content);
+      return {
+        ...importedData,
+        title: importedData.title && importedData.title !== "Demanda importada do Jira"
+          ? importedData.title
+          : "Demanda importada do Word"
+      };
     }
 
     function applyImportedGeneralData(data){
@@ -399,49 +883,110 @@
         reviewerInput.value = data.reviewer;
       }
 
-      if(data.endDate){
-        const parts = data.endDate.split("-");
-        const monthNames = [
-          "Janeiro", "Fevereiro", "Marco", "Abril", "Maio", "Junho",
-          "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-        ];
-        const monthIndex = Number(parts[1]) - 1;
-        const year = parts[0];
-
-        if(monthIndex >= 0 && monthIndex < monthNames.length){
-          monthInput.value = `${monthNames[monthIndex]} ${year}`;
-        }
+      const monthLabel = extractMonthYearFromDateTime(data.endDate || data.startDate);
+      if(monthLabel){
+        monthInput.value = monthLabel;
       }
+
+      syncPrintCover();
     }
 
-    jiraImportInput.addEventListener("change", async function(event){
-      const file = event.target.files[0];
-      if(!file){
-        return;
-      }
+    if(wordFileBtn && wordImportInput){
+      wordFileBtn.addEventListener("click", function(){
+        wordImportInput.click();
+      });
+    }
 
-      try{
-        const content = await readImportFile(file);
-        const importedData = parseJiraImport(content);
-
-        if(!content || !content.trim()){
-          alert("Nao foi possivel identificar dados do Jira nesse arquivo. Exporte como HTML de impressao ou copie o conteudo completo.");
+    if(wordImportInput){
+      wordImportInput.addEventListener("change", async function(event){
+        const file = event.target.files[0];
+        if(!file){
           return;
         }
 
-        if(!importedData.description && !importedData.title){
-          alert("Arquivo importado, mas sem texto legivel do Jira. Tente exportar o Jira como HTML ou PDF com texto selecionavel.");
+        try{
+          const content = await readWordFile(file);
+          const importedData = parseWordImport(content);
+
+          if(!content || !content.trim()){
+            alert("Nao foi possivel ler o arquivo Word enviado.");
+            return;
+          }
+
+          if(!hasImportedData(importedData)){
+            alert("Arquivo Word importado, mas sem campos reconheciveis.");
+            return;
+          }
+
+          addActivity(importedData);
+          applyImportedGeneralData(importedData);
+        } catch(error){
+          alert("Falha ao importar Word. Use preferencialmente arquivos .docx com texto selecionavel.");
+        } finally{
+          event.target.value = "";
+        }
+      });
+    }
+
+    if(xmlFileBtn && xmlImportInput){
+      xmlFileBtn.addEventListener("click", function(){
+        xmlImportInput.click();
+      });
+    }
+
+    if(xmlImportInput){
+      xmlImportInput.addEventListener("change", async function(event){
+        const file = event.target.files[0];
+        if(!file){
           return;
         }
 
-        addActivity(importedData);
-        applyImportedGeneralData(importedData);
-      } catch(error){
-        alert("Falha ao importar arquivo do Jira. Verifique se o arquivo e HTML/TXT ou PDF com texto selecionavel.");
-      } finally{
-        event.target.value = "";
-      }
-    });
+        try{
+          const content = await readImportFile(file);
+          const importedData = parseXmlImport(content);
+
+          if(!content || !content.trim()){
+            alert("Nao foi possivel ler o XML enviado.");
+            return;
+          }
+
+          if(!hasImportedData(importedData)){
+            alert("XML importado, mas sem campos reconheciveis.");
+            return;
+          }
+
+          addActivity(importedData);
+          applyImportedGeneralData(importedData);
+        } catch(error){
+          alert("Falha ao importar XML. Verifique se o arquivo esta bem formado ou se o texto colado e um XML valido.");
+        } finally{
+          event.target.value = "";
+        }
+      });
+    }
+
+    if(xmlTextBtn && xmlTextInput){
+      xmlTextBtn.addEventListener("click", function(){
+        const content = (xmlTextInput.value || "").trim();
+        if(!content){
+          alert("Cole o XML antes de importar.");
+          return;
+        }
+
+        try{
+          const importedData = parseXmlImport(content);
+          if(!hasImportedData(importedData)){
+            alert("O texto colado nao trouxe campos reconheciveis de XML.");
+            return;
+          }
+
+          addActivity(importedData);
+          applyImportedGeneralData(importedData);
+        } catch(error){
+          alert("Falha ao importar o texto XML. Verifique se o conteúdo esta valido.");
+        }
+      });
+    }
 
     // Logo preview
     document.getElementById("logoInput").addEventListener("change", function(event){
@@ -451,13 +996,18 @@
         const reader = new FileReader();
 
         reader.onload = function(e){
-          document.getElementById("logoPreview").innerHTML =
+          logoPreview.innerHTML =
             `<img src="${e.target.result}" alt="Logo">`;
+          syncPrintCover();
         }
 
         reader.readAsDataURL(file);
       }
     });
 
-    // Cria primeira demanda automaticamente
-    addActivity();
+    monthInput.addEventListener("input", syncPrintCover);
+    reviewerInput.addEventListener("input", syncPrintCover);
+    window.addEventListener("beforeprint", syncPrintCover);
+
+    renderEmptyActivitiesState();
+    syncPrintCover();

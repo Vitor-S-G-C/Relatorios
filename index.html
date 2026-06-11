@@ -37,6 +37,59 @@
 
     </div>
 
+    <section class="print-cover" id="printCover" aria-hidden="true">
+      <div class="print-cover-topbar">
+        <span id="coverDateTime">--/--/---- --:--</span>
+        <span>Relatório de Demandas</span>
+      </div>
+
+      <div class="print-cover-hero">
+        <div class="print-cover-copy">
+          <div class="print-cover-logo" id="coverLogo">LOGO</div>
+
+          <div class="print-cover-title-block">
+            <h2>Relatório de</h2>
+            <h1>Demandas</h1>
+            <p>Controle de demandas realizadas pela equipe</p>
+          </div>
+
+          <div class="print-cover-divider"></div>
+
+          <p class="print-cover-description">
+            Este relatório apresenta um resumo das demandas registradas, acompanhadas e concluídas pela equipe, trazendo mais transparência e controle sobre o andamento das atividades.
+          </p>
+        </div>
+
+        <div class="print-cover-art">
+          <div class="print-cover-art-bars"></div>
+          <div class="print-cover-art-line"></div>
+          <div class="print-cover-art-dots"></div>
+        </div>
+      </div>
+
+      <div class="print-cover-metrics">
+        <div class="print-cover-metric-card">
+          <span class="print-cover-metric-label">Mês do relatório</span>
+          <strong id="coverMonthValue">Não informado</strong>
+        </div>
+
+        <div class="print-cover-metric-card">
+          <span class="print-cover-metric-label">Responsável pela revisão</span>
+          <strong id="coverReviewerValue">Não informado</strong>
+        </div>
+
+        <div class="print-cover-metric-card print-cover-metric-card-highlight">
+          <span class="print-cover-metric-label">Horas trabalhadas no mês</span>
+          <strong id="coverHoursValue">0h</strong>
+        </div>
+      </div>
+
+      <div class="print-cover-note">
+        <strong>Como utilizar este relatório</strong>
+        <p>As demandas detalhadas estão disponíveis nas próximas páginas. Utilize os indicadores de status, prioridade e horas para acompanhar o desempenho do mês.</p>
+      </div>
+    </section>
+
     <!-- INFO GERAL -->
     <div class="info-grid">
 
@@ -52,6 +105,33 @@
 
     </div>
 
+    <div class="summary-strip">
+      <div class="summary-card">
+        <span class="summary-label">Horas trabalhadas no mês</span>
+        <strong class="summary-value" id="totalHoursValue">0h</strong>
+      </div>
+    </div>
+
+    <div class="xml-import-section">
+      <div>
+        <h2>Importação XML</h2>
+        <p>Envie um arquivo XML ou cole o texto do XML com início e término do projeto.</p>
+      </div>
+
+      <div class="xml-import-actions">
+        <input type="file" id="xmlImportInput" hidden accept=".xml,.txt,text/xml,application/xml">
+        <button class="import-btn" id="xmlFileBtn" type="button">
+          Importar XML por Arquivo
+        </button>
+
+        <button class="import-btn" id="xmlTextBtn" type="button">
+          Importar XML por Texto
+        </button>
+      </div>
+
+      <textarea id="xmlTextInput" placeholder="Cole aqui o XML do projeto com as datas de início e término..."></textarea>
+    </div>
+
     <!-- DEMANDA -->
     <div class="activities-section">
 
@@ -59,9 +139,9 @@
         <h2>Demandas</h2>
 
         <div class="title-actions">
-          <input type="file" id="jiraImportInput" hidden accept=".html,.htm,.txt,.pdf">
-          <button class="import-btn" onclick="document.getElementById('jiraImportInput').click()">
-            Importar Jira
+          <input type="file" id="wordImportInput" hidden accept=".docx,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword">
+          <button class="import-btn" id="wordFileBtn" type="button">
+            Importar Word
           </button>
 
           <button class="add-btn" onclick="addActivity()">
@@ -80,7 +160,7 @@
 
   </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.min.js"></script>
+<script src="https://unpkg.com/mammoth@1.9.0/mammoth.browser.min.js"></script>
 <script src="script.js"></script>
 
 </body>
